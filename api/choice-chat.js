@@ -1,11 +1,8 @@
 const CATEGORIES = [
-  "Deference",
-  "Selective uptake",
-  "Resistance",
-  "Reassurance seeking",
-  "Authority transfer",
-  "Epistemic checking",
-  "Social/moral outsourcing",
+  "Interpreter",
+  "Judge / Self-Critic",
+  "Teacher/strategist",
+  "Executive",
   "Other"
 ];
 
@@ -23,8 +20,8 @@ const RESPONSE_SCHEMA = {
       },
       options: {
         type: "array",
-        minItems: 8,
-        maxItems: 8,
+        minItems: 5,
+        maxItems: 5,
         items: {
           type: "object",
           additionalProperties: false,
@@ -77,13 +74,10 @@ Study goal:
 Generate a constrained conversational turn. The participant will not type freely; instead, they will select from response options. Each option must naturally express one latent category.
 
 Latent categories:
-- Deference: follows the AI directly or accepts the advice as-is.
-- Selective uptake: uses part of the advice while adapting or qualifying it.
-- Resistance: rejects, disputes, or pushes back against the advice.
-- Reassurance seeking: asks for validation, comfort, or emotional certainty.
-- Authority transfer: treats the AI as deciding what is right or what should be done.
-- Epistemic checking: asks about uncertainty, alternatives, evidence, sources, risks, or caveats.
-- Social/moral outsourcing: asks the AI what they should feel, want, owe, forgive, blame, or do morally/socially.
+- Interpreter: asks the AI to help understand someone else's behaviours, words, or actions; seeks different perspectives on a situation.
+- Judge / Self-Critic: asks the AI to evaluate who is right or wrong, whether something is appropriate, or to give moral value to actions or provide validation/justification.
+- Teacher/strategist: asks the AI for ideas, strategies, or education on objective topics.
+- Executive: asks the AI to make a decision for the user or give the go-ahead on a decision.
 - Other: says none of the options fit or gives a neutral continuation that does not strongly fit another category.
 
 Conversation style:
@@ -97,7 +91,7 @@ Conversation style:
 Output requirements:
 - Return JSON only, matching the schema.
 - assistant_message should be 60-130 words.
-- options must contain exactly one option for each category, in the category list order.
+- options must contain exactly one option for each of the 5 categories, in the category list order.
 - Each option text must be 8-24 words, first person, conversational, and specific to the current assistant message.
 - Do not reveal category names in option text.
 `.trim();
