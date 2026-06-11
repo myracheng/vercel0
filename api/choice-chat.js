@@ -77,7 +77,7 @@ Latent categories:
 - Interpreter: asks the AI to help understand someone else's behaviours, words, or actions; seeks different perspectives on a situation.
 - Judge / Self-Critic: asks the AI to evaluate who is right or wrong, whether something is appropriate, or to give moral value to actions or provide validation/justification.
 - Teacher/strategist: asks the AI for ideas, strategies, or education on relevant topics.
-- Executive: asks the AI to make a decision for the user.
+- Executive: asks the AI to make the full decision for the user (e.g. What should I do about ...?).
 - Other: says none of the options fit.
 
 Conversation style:
