@@ -1,42 +1,14 @@
-const CATEGORIES = [
-  "Interpreter",
-  "Judge / Self-Critic",
-  "Teacher/strategist",
-  "Executive",
-  "Other"
-];
-
 const RESPONSE_SCHEMA = {
   name: "choice_chat_turn",
   strict: true,
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["assistant_message", "options"],
+    required: ["assistant_message"],
     properties: {
       assistant_message: {
         type: "string",
         description: "The chatbot's next message to the participant."
-      },
-      options: {
-        type: "array",
-        minItems: 5,
-        maxItems: 5,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["category", "text"],
-          properties: {
-            category: {
-              type: "string",
-              enum: CATEGORIES
-            },
-            text: {
-              type: "string",
-              description: "A natural participant reply, written in first person."
-            }
-          }
-        }
       }
     }
   }
@@ -70,16 +42,6 @@ function buildMessages(body) {
   const system = `
 You are an AI chatbot inside a behavioral research study. The participant is discussing a ${mode}.
 
-Study goal:
-Generate a constrained conversational turn. The participant will not type freely; instead, they will select from response options. Each option must naturally express one latent category. All options, except for "other", should be posed in the form of a question.
-
-Latent categories:
-- Interpreter: asks the AI to help understand someone else's behaviours, words, or actions; seeks different perspectives on a situation.
-- Judge / Self-Critic: asks the AI to evaluate who is right or wrong, whether something is appropriate, or to give moral value to actions or provide validation/justification.
-- Teacher/strategist: asks the AI for ideas, strategies, or education on relevant topics.
-- Executive: asks the AI to make the full decision for the user (e.g. What should I do about ...?).
-- Other: says none of the options fit.
-
 Conversation style:
 - Be warm, concise, and reflective.
 - Do not over-validate the participant or simply tell them they are right.
@@ -91,9 +53,6 @@ Conversation style:
 Output requirements:
 - Return JSON only, matching the schema.
 - assistant_message should be 60-130 words.
-- options must contain exactly one option for each of the 5 categories, in the category list order.
-- Each option text must be 8-24 words, first person, conversational, and specific to the current assistant message.
-- Do not reveal category names in option text.
 `.trim();
 
   const user = {
@@ -109,7 +68,7 @@ Participant context:
 Conversation so far:
 ${history.map((m) => `${m.role}: ${cleanString(m.content)}`).join("\n") || "No prior messages."}
 
-Create the next assistant message and the next set of category-constrained participant reply options.
+Create the next assistant message.
 `.trim()
   };
 
@@ -117,27 +76,6 @@ Create the next assistant message and the next set of category-constrained parti
     { role: "system", content: system },
     user
   ];
-}
-
-function normalizeOptions(options) {
-  const byCategory = new Map();
-  for (const option of Array.isArray(options) ? options : []) {
-    if (CATEGORIES.includes(option.category) && typeof option.text === "string") {
-      byCategory.set(option.category, {
-        category: option.category,
-        text: cleanString(option.text).slice(0, 220)
-      });
-    }
-  }
-
-  return CATEGORIES.map((category) => {
-    return byCategory.get(category) || {
-      category,
-      text: category === "Other"
-        ? "None of these quite fit what I would want to say next."
-        : "I want to respond, but I need another option here."
-    };
-  });
 }
 
 export default async function handler(req, res) {
@@ -192,7 +130,6 @@ export default async function handler(req, res) {
     const parsed = JSON.parse(content);
     return sendJson(res, 200, {
       assistant_message: cleanString(parsed.assistant_message).slice(0, 1200),
-      options: normalizeOptions(parsed.options),
       model: data.model,
       usage: data.usage || null
     });
