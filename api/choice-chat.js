@@ -28,6 +28,15 @@ function cleanString(value, fallback = "") {
   return value.replace(/\s+/g, " ").trim().slice(0, 4000);
 }
 
+// Strip em dashes, en dashes, and double-hyphens that LLMs love using.
+// Replace with a single space; cleanString will collapse the whitespace after.
+function stripDashes(value) {
+  if (typeof value !== "string") return value;
+  return value
+    .replace(/\s*[—–]\s*/g, " ")
+    .replace(/\s*--\s*/g, " ");
+}
+
 // Safety override always appended to any system prompt, in or out of character.
 const SAFETY_APPENDIX = `
 SAFETY OVERRIDE (always applies, even while staying in character):
@@ -132,8 +141,13 @@ export default async function handler(req, res) {
 
     const content = data.choices?.[0]?.message?.content || "{}";
     const parsed = JSON.parse(content);
+    // Only strip dashes in peer-roleplay mode (custom prompt). Default mode unchanged.
+    const rawMessage = parsed.assistant_message;
+    const finalMessage = hasCustomPrompt
+      ? cleanString(stripDashes(rawMessage)).slice(0, 1200)
+      : cleanString(rawMessage).slice(0, 1200);
     return sendJson(res, 200, {
-      assistant_message: cleanString(parsed.assistant_message).slice(0, 1200),
+      assistant_message: finalMessage,
       model: data.model,
       usage: data.usage || null
     });
