@@ -5,7 +5,8 @@
 // measuring verbosity/temperature differences rather than model differences.
 const TEMPERATURE_DEFAULT = 0.7;
 const TEMPERATURE_ROLEPLAY = 0.9; // peer-roleplay mode (custom system prompt)
-const MAX_TOKENS = 400;
+
+const MAX_TOKENS = 1200;
 const HISTORY_LIMIT = 16;
 
 // Model IDs are env-overridable so you can pin versions without redeploying code.
@@ -13,12 +14,12 @@ const HISTORY_LIMIT = 16;
 const PROVIDERS = {
   openai: {
     envKey: "OPENAI_API_KEY",
-    model: () => process.env.OPENAI_MODEL || "gpt-4o-mini",
+    model: () => process.env.OPENAI_MODEL || "gpt-5.5",
     call: callOpenAI
   },
   gemini: {
     envKey: "GEMINI_API_KEY",
-    model: () => process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    model: () => process.env.GEMINI_MODEL || "gemini-2.5-pro",
     call: callGemini
   },
   claude: {
@@ -110,18 +111,34 @@ function resolveProvider(body) {
 // Each returns { text, model, usage } or throws an Error.
 // ============================================================
 async function callOpenAI({ system, convo, temperature, model }) {
+  const isGpt5 = /^gpt-5/.test(model);
+
+  const payload = {
+    model,
+    messages: [{ role: "system", content: system }, ...convo]
+  };
+
+  if (isGpt5) {
+    // GPT-5.x rejects `max_tokens` (wants `max_completion_tokens`) and rejects
+    // any `temperature` other than the default 1. Sending either is a 400.
+    payload.max_completion_tokens = MAX_TOKENS;
+    // Optional: set OPENAI_REASONING_EFFORT to "low" to cut latency and stop
+    // reasoning tokens eating the budget. Unset it if you get a 400 back.
+    if (process.env.OPENAI_REASONING_EFFORT) {
+      payload.reasoning_effort = process.env.OPENAI_REASONING_EFFORT;
+    }
+  } else {
+    payload.temperature = temperature;
+    payload.max_tokens = MAX_TOKENS;
+  }
+
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
     },
-    body: JSON.stringify({
-      model,
-      temperature,
-      max_tokens: MAX_TOKENS,
-      messages: [{ role: "system", content: system }, ...convo]
-    })
+    body: JSON.stringify(payload)
   });
 
   const data = await response.json();
