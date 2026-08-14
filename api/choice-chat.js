@@ -14,17 +14,17 @@ const HISTORY_LIMIT = 16;
 const PROVIDERS = {
   openai: {
     envKey: "OPENAI_API_KEY",
-    model: () => process.env.OPENAI_MODEL || "gpt-5.5",
+    model: () => process.env.OPENAI_MODEL || "gpt-5.6-sol",
     call: callOpenAI
   },
   gemini: {
     envKey: "GEMINI_API_KEY",
-    model: () => process.env.GEMINI_MODEL || "gemini-2.5-pro",
+    model: () => process.env.GEMINI_MODEL || "gemini-3.1-pro",
     call: callGemini
   },
   claude: {
     envKey: "ANTHROPIC_API_KEY",
-    model: () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
+    model: () => process.env.ANTHROPIC_MODEL || "claude-opus-5",
     call: callClaude
   }
 };
