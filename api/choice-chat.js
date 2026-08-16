@@ -19,7 +19,9 @@ const PROVIDERS = {
   },
   gemini: {
     envKey: "GEMINI_API_KEY",
-    model: () => process.env.GEMINI_MODEL || "gemini-3.1-pro",
+    // "gemini-3.1-pro" is NOT a valid generateContent model id; the served
+    // name is "gemini-3.1-pro-preview" (verified via the ListModels endpoint).
+    model: () => process.env.GEMINI_MODEL || "gemini-3.1-pro-preview",
     call: callGemini
   },
   claude: {
@@ -180,15 +182,43 @@ async function callGemini({ system, convo, temperature, model }) {
     throw new Error(data.error?.message || "Gemini request failed.");
   }
 
-  const parts = data.candidates?.[0]?.content?.parts || [];
+  const candidate = data.candidates?.[0];
+  const parts = candidate?.content?.parts || [];
+  const text = parts.map((p) => p.text || "").join(" ").trim();
+
+  // Gemini can return a candidate with no text when the reply is blocked by a
+  // safety filter or cut off (finishReason SAFETY / MAX_TOKENS / RECITATION).
+  // Surface that instead of letting the handler report a bare "empty response".
+  if (!text) {
+    const reason = candidate?.finishReason || data.promptFeedback?.blockReason;
+    throw new Error(
+      reason ? `Gemini returned no text (finishReason: ${reason}).` : "Gemini returned no text."
+    );
+  }
+
   return {
-    text: parts.map((p) => p.text || "").join(" "),
+    text,
     model,
     usage: data.usageMetadata || null
   };
 }
 
 async function callClaude({ system, convo, temperature, model }) {
+  // claude-opus-5 (and later) deprecate the `temperature` field: sending it is
+  // a 400 ("temperature is deprecated for this model"). Only pass temperature
+  // for models that still accept it.
+  const acceptsTemperature = !/^claude-opus-5/.test(model);
+
+  const payload = {
+    model,
+    system,
+    max_tokens: MAX_TOKENS,
+    messages: convo
+  };
+  if (acceptsTemperature) {
+    payload.temperature = temperature;
+  }
+
   // Anthropic takes the system prompt as a top-level field, not a message.
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -197,13 +227,7 @@ async function callClaude({ system, convo, temperature, model }) {
       "x-api-key": process.env.ANTHROPIC_API_KEY,
       "anthropic-version": "2023-06-01"
     },
-    body: JSON.stringify({
-      model,
-      system,
-      temperature,
-      max_tokens: MAX_TOKENS,
-      messages: convo
-    })
+    body: JSON.stringify(payload)
   });
 
   const data = await response.json();
