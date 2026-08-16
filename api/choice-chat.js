@@ -271,10 +271,12 @@ export default async function handler(req, res) {
     return sendJson(res, 500, { error: `Missing ${provider.envKey} on the server.` });
   }
 
-  // Higher temperature only when a custom system prompt is supplied (peer-roleplay mode).
-  // Default flow keeps the original 0.7 so existing experiments are unaffected.
-  const hasCustomPrompt = typeof body.systemPrompt === "string" && body.systemPrompt.trim().length > 0;
-  const temperature = hasCustomPrompt ? TEMPERATURE_ROLEPLAY : TEMPERATURE_DEFAULT;
+  // Peer-roleplay mode is driven by the human arm's `persona` flag, NOT by the
+  // mere presence of a system prompt (the AI arm also sends one). This keeps the
+  // AI arm at the default temperature with its natural style (em dashes) intact,
+  // while the human-illusion arm gets the higher temperature + dash stripping.
+  const isRoleplay = body.persona === "peer_participant";
+  const temperature = isRoleplay ? TEMPERATURE_ROLEPLAY : TEMPERATURE_DEFAULT;
 
   try {
     const result = await provider.call({
@@ -284,8 +286,9 @@ export default async function handler(req, res) {
       model: provider.model()
     });
 
-    // Only strip dashes in peer-roleplay mode (custom prompt). Default mode unchanged.
-    const finalMessage = hasCustomPrompt
+    // Only strip em/en dashes in peer-roleplay (human-illusion) mode. The AI arm
+    // keeps its natural output.
+    const finalMessage = isRoleplay
       ? cleanString(stripDashes(result.text)).slice(0, 1200)
       : cleanString(result.text).slice(0, 1200);
 
